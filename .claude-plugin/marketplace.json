@@ -7,5 +7,15 @@
     "description": "Hard-won, source-verified knowledge about developer tools, packaged as agent skills",
     "version": "0.1.0"
   },
-  "plugins": []
+  "plugins": [
+    {
+      "name": "pre-commit",
+      "description": "How pre-commit selects files for each hook, and how to debug files/exclude/types filters",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/pre-commit"
+      ]
+    }
+  ]
 }

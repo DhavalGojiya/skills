@@ -8,6 +8,7 @@ Each skill follows the [Agent Skills](https://agentskills.io) format: a `SKILL.m
 
 | Skill | Use it when | Verified against |
 |---|---|---|
+| [pre-commit](skills/pre-commit/SKILL.md) | A hook skips or checks the wrong files, `files`/`exclude`/`types` filters misbehave, `run` and `run -a` disagree | pre-commit 4.6.2 |
 
 ## Install
 
@@ -15,12 +16,14 @@ Each skill follows the [Agent Skills](https://agentskills.io) format: a `SKILL.m
 
 ```text
 /plugin marketplace add DhavalGojiya/skills
+/plugin install pre-commit@dhavalgojiya-skills
 ```
 
 Or from a shell:
 
 ```bash
 claude plugin marketplace add DhavalGojiya/skills
+claude plugin install pre-commit@dhavalgojiya-skills
 ```
 
 Each skill is its own plugin, so install only the ones you need.
@@ -31,9 +34,13 @@ Copy a skill directory into the agent's skills folder, for example for Claude Co
 
 ```bash
 git clone https://github.com/DhavalGojiya/skills
-cp -r skills/skills/<tool> ~/.claude/skills/        # all projects
-cp -r skills/skills/<tool> .claude/skills/          # one project
+cp -r skills/skills/pre-commit ~/.claude/skills/        # all projects
+cp -r skills/skills/pre-commit .claude/skills/          # one project
 ```
+
+### Reading it yourself
+
+Every `references/*.md` file is a standalone article. Start with [How pre-commit selects files for each hook](skills/pre-commit/references/file-selection-order.md).
 
 ## Layout
 
