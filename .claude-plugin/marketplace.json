@@ -1,0 +1,11 @@
+{
+  "name": "dhavalgojiya-skills",
+  "owner": {
+    "name": "Dhaval Gojiya"
+  },
+  "metadata": {
+    "description": "Hard-won, source-verified knowledge about developer tools, packaged as agent skills",
+    "version": "0.1.0"
+  },
+  "plugins": []
+}
