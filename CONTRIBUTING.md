@@ -4,12 +4,12 @@ A skill here captures behaviour that is hard to discover, checked against the to
 
 ## Where things go
 
-| Content | Location |
-|---|---|
-| One tool | `skills/<tool>/` (lowercase, hyphens, matches `name:` in `SKILL.md`) |
-| Rules an agent must follow, debug steps | `skills/<tool>/SKILL.md` |
-| Long explanations, quoted source, worked examples | `skills/<tool>/references/<topic>.md` |
-| Anything meant to be run | `skills/<tool>/scripts/` |
+| Content                                           | Location                                                             |
+| ------------------------------------------------- | -------------------------------------------------------------------- |
+| One tool                                          | `skills/<tool>/` (lowercase, hyphens, matches `name:` in `SKILL.md`) |
+| Rules an agent must follow, debug steps           | `skills/<tool>/SKILL.md`                                             |
+| Long explanations, quoted source, worked examples | `skills/<tool>/references/<topic>.md`                                |
+| Anything meant to be run                          | `skills/<tool>/scripts/`                                             |
 
 Keep one skill per tool and add topics as reference files. Split a tool into several skills only when the topics answer clearly different requests and `SKILL.md` would pass about 500 lines.
 
@@ -54,8 +54,9 @@ Ordered steps, each a command to run and what to look for.
 ## Verification
 
 - State the version you checked, at the top of `SKILL.md` and of each reference file.
-- Quote source only from that version, with its file path.
-- Every command and code block must run as written. Scripts declare their dependencies inline (PEP 723) so `uv run scripts/<name>.py` works with no setup.
+- Quote source only from that version, with its file path, and copy it verbatim; formatters never touch code blocks in Markdown.
+- Put a `Source:` link above each quoted block, pinned to the commit SHA the release tag points to, with line numbers. `check-vcs-permalinks` rejects branch and tag links with line anchors. Get the SHA with `git ls-remote https://github.com/<owner>/<repo> 'refs/tags/<tag>' 'refs/tags/<tag>^{}'`; for an annotated tag, use the `^{}` line. Version links without line anchors (`/tree/<tag>`) may name the tag.
+- Every command and code block must run as written. Scripts declare their dependencies and `requires-python = ">=3.14"` inline (PEP 723) so `uv run scripts/<name>.py` works with no setup; uv downloads Python 3.14 if it is missing.
 - When a new release changes the behaviour, update the text and the version line together.
 
 ## Registering a skill
@@ -73,6 +74,10 @@ Add an entry to `.claude-plugin/marketplace.json`:
 ```
 
 Add a row to the table in `README.md`. If you have the Claude Code CLI, run `claude plugin validate .` before opening a pull request.
+
+## Formatting
+
+Hooks run with [prek](https://prek.j178.dev/) from `.pre-commit-config.yaml`. Install once with `uv tool install prek`, then `prek install` in the repo root. Run `prek run -a` before committing; it formats Markdown (mdformat), Python (ruff), YAML (yamlfmt) and JSON, and spell-checks everything (codespell). CI runs the same hooks on every push and pull request to `main` (`.github/workflows/prek.yml`) and fails if any hook changes a file.
 
 ## Style
 

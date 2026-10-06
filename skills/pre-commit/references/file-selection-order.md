@@ -2,28 +2,28 @@
 
 A deep dive into the order in which pre-commit builds the list of files it passes to every hook, based on the source of the official repository ([pre-commit/pre-commit](https://github.com/pre-commit/pre-commit), verified against release [4.6.2](https://github.com/pre-commit/pre-commit/tree/v4.6.2), files `pre_commit/main.py`, `pre_commit/commands/run.py` and `pre_commit/git.py`).
 
-Every "Source:" link points at that tag with line numbers, so it shows exactly the code quoted here.
+Every "Source:" link points at the commit that tag names, with line numbers, so it shows exactly the code quoted here.
 
----
+______________________________________________________________________
 
 ## Table of Contents
 
-1. [The Big Picture](#1-the-big-picture)
-2. [Entry Point: `pre-commit` vs `pre-commit run`](#2-entry-point-pre-commit-vs-pre-commit-run)
-3. [Stage 0: Where the File List Comes From](#3-stage-0-where-the-file-list-comes-from)
-4. [Stashing Unstaged Changes](#4-stashing-unstaged-changes)
-5. [Stage 1: Top-Level `files:` / `exclude:`](#5-stage-1-top-level-files--exclude)
-6. [Stage 2: `os.path.lexists`](#6-stage-2-ospathlexists)
-7. [Stage 3: Hook-Level `files:` / `exclude:`](#7-stage-3-hook-level-files--exclude)
-8. [Stage 4: `types`, `types_or`, `exclude_types`](#8-stage-4-types-types_or-exclude_types)
-9. [The Per-Hook Loop](#9-the-per-hook-loop)
+01. [The Big Picture](#1-the-big-picture)
+02. [Entry Point: `pre-commit` vs `pre-commit run`](#2-entry-point-pre-commit-vs-pre-commit-run)
+03. [Stage 0: Where the File List Comes From](#3-stage-0-where-the-file-list-comes-from)
+04. [Stashing Unstaged Changes](#4-stashing-unstaged-changes)
+05. [Stage 1: Top-Level `files:` / `exclude:`](#5-stage-1-top-level-files--exclude)
+06. [Stage 2: `os.path.lexists`](#6-stage-2-ospathlexists)
+07. [Stage 3: Hook-Level `files:` / `exclude:`](#7-stage-3-hook-level-files--exclude)
+08. [Stage 4: `types`, `types_or`, `exclude_types`](#8-stage-4-types-types_or-exclude_types)
+09. [The Per-Hook Loop](#9-the-per-hook-loop)
 10. [Worked Example with Real Numbers](#10-worked-example-with-real-numbers)
 11. [`pre-commit run` vs `pre-commit run -a`](#11-pre-commit-run-vs-pre-commit-run--a)
 12. [Regex Gotchas](#12-regex-gotchas)
 13. [Debugging Your Filters](#13-debugging-your-filters)
 14. [Quick Reference](#14-quick-reference)
 
----
+______________________________________________________________________
 
 ## 1. The Big Picture
 
@@ -56,13 +56,13 @@ Key consequences of this design:
 - Anything removed at the top level (stage 1) is invisible to **every** hook.
 - Hook-level filters (stages 3 and 4) are independent between hooks. What hook A filters out has no effect on hook B.
 
----
+______________________________________________________________________
 
 ## 2. Entry Point: `pre-commit` vs `pre-commit run`
 
 Running `pre-commit` with no arguments is exactly the same as `pre-commit run`. Python's `argparse` has no notion of a default subcommand, so `main.py` inserts one:
 
-Source: [`main.py#L367-L370`](https://github.com/pre-commit/pre-commit/blob/v4.6.2/pre_commit/main.py#L367-L370)
+Source: [`main.py#L367-L370`](https://github.com/pre-commit/pre-commit/blob/9767b6c8211a6bf683875a0afcf2b390457a4b66/pre_commit/main.py#L367-L370)
 
 ```python
 # pre_commit/main.py
@@ -80,13 +80,13 @@ pre-commit run
 
 The Git hook that `pre-commit install` writes into `.git/hooks/pre-commit` also calls `run`, so committing behaves like a plain `pre-commit run` (with the hook stage set to `pre-commit`).
 
----
+______________________________________________________________________
 
 ## 3. Stage 0: Where the File List Comes From
 
 The very first list of filenames is produced by `_all_filenames()`. It checks a chain of conditions and returns the **first** one that applies:
 
-Source: [`commands/run.py#L253-L271`](https://github.com/pre-commit/pre-commit/blob/v4.6.2/pre_commit/commands/run.py#L253-L271)
+Source: [`commands/run.py#L253-L271`](https://github.com/pre-commit/pre-commit/blob/9767b6c8211a6bf683875a0afcf2b390457a4b66/pre_commit/commands/run.py#L253-L271)
 
 ```python
 # pre_commit/commands/run.py
@@ -113,21 +113,21 @@ def _all_filenames(args: argparse.Namespace) -> Iterable[str]:
 
 ### Mapping CLI usage to Stage 0
 
-| Command | Branch taken | Source of filenames |
-|---|---|---|
-| `pre-commit run` | `else` | Staged files |
-| `pre-commit run -a` / `--all-files` | `args.all_files` | Every tracked file |
-| `pre-commit run --files a.py b.py` | `args.files` | Exactly the paths you list |
-| `pre-commit run --from-ref X --to-ref Y` | `from_ref and to_ref` | Files changed between two refs |
-| `pre-commit run` during a merge conflict | `is_in_merge_conflict()` | Conflicted files |
-| `--hook-stage commit-msg` | commit-msg branch | The commit message file only |
-| `--hook-stage post-commit` (and similar) | first branch | No files at all |
+| Command                                  | Branch taken             | Source of filenames            |
+| ---------------------------------------- | ------------------------ | ------------------------------ |
+| `pre-commit run`                         | `else`                   | Staged files                   |
+| `pre-commit run -a` / `--all-files`      | `args.all_files`         | Every tracked file             |
+| `pre-commit run --files a.py b.py`       | `args.files`             | Exactly the paths you list     |
+| `pre-commit run --from-ref X --to-ref Y` | `from_ref and to_ref`    | Files changed between two refs |
+| `pre-commit run` during a merge conflict | `is_in_merge_conflict()` | Conflicted files               |
+| `--hook-stage commit-msg`                | commit-msg branch        | The commit message file only   |
+| `--hook-stage post-commit` (and similar) | first branch             | No files at all                |
 
 Note the priority: `--from-ref/--to-ref` beats `--files`, which beats `--all-files`.
 
 ### The Git commands behind it
 
-Source: [`git.py#L135-L143`](https://github.com/pre-commit/pre-commit/blob/v4.6.2/pre_commit/git.py#L135-L143), [`git.py#L154-L155`](https://github.com/pre-commit/pre-commit/blob/v4.6.2/pre_commit/git.py#L154-L155), [`git.py#L158-L167`](https://github.com/pre-commit/pre-commit/blob/v4.6.2/pre_commit/git.py#L158-L167)
+Source: [`git.py#L135-L143`](https://github.com/pre-commit/pre-commit/blob/9767b6c8211a6bf683875a0afcf2b390457a4b66/pre_commit/git.py#L135-L143), [`git.py#L154-L155`](https://github.com/pre-commit/pre-commit/blob/9767b6c8211a6bf683875a0afcf2b390457a4b66/pre_commit/git.py#L154-L155), [`git.py#L158-L167`](https://github.com/pre-commit/pre-commit/blob/9767b6c8211a6bf683875a0afcf2b390457a4b66/pre_commit/git.py#L158-L167)
 
 ```python
 # pre_commit/git.py
@@ -175,26 +175,26 @@ git ls-files --deduplicate | wc -l
 
 This is **hardcoded** in pre-commit and has nothing to do with your config's `files:` or `exclude:`. It is a Git option that filters by **change status**, not by path:
 
-| Letter | Meaning |
-|---|---|
-| `A` | Added |
-| `C` | Copied |
-| `M` | Modified |
-| `R` | Renamed |
-| `T` | Type changed (e.g. regular file to symlink) |
-| `U` | Unmerged |
-| `X` | Unknown |
-| `B` | Pairing broken |
+| Letter | Meaning                                     |
+| ------ | ------------------------------------------- |
+| `A`    | Added                                       |
+| `C`    | Copied                                      |
+| `M`    | Modified                                    |
+| `R`    | Renamed                                     |
+| `T`    | Type changed (e.g. regular file to symlink) |
+| `U`    | Unmerged                                    |
+| `X`    | Unknown                                     |
+| `B`    | Pairing broken                              |
 
 The only status left out is `D` (deleted): a deleted file has nothing on disk for a hook to check.
 
----
+______________________________________________________________________
 
 ## 4. Stashing Unstaged Changes
 
 This is the second (and last) behavioural difference between modes. It does not change **which** files are selected, but it changes **what content** hooks see in those files.
 
-Source: [`commands/run.py#L344`](https://github.com/pre-commit/pre-commit/blob/v4.6.2/pre_commit/commands/run.py#L344), [`commands/run.py#L420-L421`](https://github.com/pre-commit/pre-commit/blob/v4.6.2/pre_commit/commands/run.py#L420-L421)
+Source: [`commands/run.py#L344`](https://github.com/pre-commit/pre-commit/blob/9767b6c8211a6bf683875a0afcf2b390457a4b66/pre_commit/commands/run.py#L344), [`commands/run.py#L420-L421`](https://github.com/pre-commit/pre-commit/blob/9767b6c8211a6bf683875a0afcf2b390457a4b66/pre_commit/commands/run.py#L420-L421)
 
 ```python
 # pre_commit/commands/run.py
@@ -204,11 +204,11 @@ if stash:
     exit_stack.enter_context(staged_files_only(store.directory))
 ```
 
-| Mode | Stash? | Hooks see |
-|---|---|---|
-| `pre-commit run` | Yes | Only the staged content (exactly what would be committed) |
-| `pre-commit run -a` | No | The current working tree, including unstaged edits |
-| `pre-commit run --files ...` | No | The current working tree |
+| Mode                         | Stash? | Hooks see                                                 |
+| ---------------------------- | ------ | --------------------------------------------------------- |
+| `pre-commit run`             | Yes    | Only the staged content (exactly what would be committed) |
+| `pre-commit run -a`          | No     | The current working tree, including unstaged edits        |
+| `pre-commit run --files ...` | No     | The current working tree                                  |
 
 Example of why this matters:
 
@@ -227,7 +227,7 @@ pre-commit run
 pre-commit run -a
 ```
 
----
+______________________________________________________________________
 
 ## 5. Stage 1: Top-Level `files:` / `exclude:`
 
@@ -249,18 +249,18 @@ repos:
 
 ### Defaults
 
-Source: [`clientlib.py#L517-L518`](https://github.com/pre-commit/pre-commit/blob/v4.6.2/pre_commit/clientlib.py#L517-L518)
+Source: [`clientlib.py#L517-L518`](https://github.com/pre-commit/pre-commit/blob/9767b6c8211a6bf683875a0afcf2b390457a4b66/pre_commit/clientlib.py#L517-L518)
 
-| Key | Default | Effect |
-|---|---|---|
-| `files` | `''` | An empty regex matches every path |
-| `exclude` | `'^$'` | Matches only an empty path, so excludes nothing |
+| Key       | Default | Effect                                          |
+| --------- | ------- | ----------------------------------------------- |
+| `files`   | `''`    | An empty regex matches every path               |
+| `exclude` | `'^$'`  | Matches only an empty path, so excludes nothing |
 
 So if you never set them, Stage 1 is a no-op and the count does not change.
 
 ### How they are applied
 
-Source: [`commands/run.py#L290-L292`](https://github.com/pre-commit/pre-commit/blob/v4.6.2/pre_commit/commands/run.py#L290-L292)
+Source: [`commands/run.py#L290-L292`](https://github.com/pre-commit/pre-commit/blob/9767b6c8211a6bf683875a0afcf2b390457a4b66/pre_commit/commands/run.py#L290-L292)
 
 ```python
 # pre_commit/commands/run.py
@@ -271,7 +271,7 @@ def _run_hooks(config, hooks, skips, args) -> int:
     )
 ```
 
-Source: [`commands/run.py#L112-L126`](https://github.com/pre-commit/pre-commit/blob/v4.6.2/pre_commit/commands/run.py#L112-L126)
+Source: [`commands/run.py#L112-L126`](https://github.com/pre-commit/pre-commit/blob/9767b6c8211a6bf683875a0afcf2b390457a4b66/pre_commit/commands/run.py#L112-L126)
 
 ```python
 class Classifier:
@@ -296,7 +296,7 @@ Notice the Windows normalization: paths always use `/`, so the same regex works 
 
 ### The filter function (shared by Stage 1 and Stage 3)
 
-Source: [`commands/run.py#L60-L70`](https://github.com/pre-commit/pre-commit/blob/v4.6.2/pre_commit/commands/run.py#L60-L70)
+Source: [`commands/run.py#L60-L70`](https://github.com/pre-commit/pre-commit/blob/9767b6c8211a6bf683875a0afcf2b390457a4b66/pre_commit/commands/run.py#L60-L70)
 
 ```python
 def filter_by_include_exclude(
@@ -349,13 +349,13 @@ print(a)       # ['scheduler/models.py']
 print(a == b)  # True: order does not change the result
 ```
 
----
+______________________________________________________________________
 
 ## 6. Stage 2: `os.path.lexists`
 
 Right after Stage 1, the `Classifier` constructor drops any path that no longer exists on disk:
 
-Source: [`commands/run.py#L74-L75`](https://github.com/pre-commit/pre-commit/blob/v4.6.2/pre_commit/commands/run.py#L74-L75)
+Source: [`commands/run.py#L74-L75`](https://github.com/pre-commit/pre-commit/blob/9767b6c8211a6bf683875a0afcf2b390457a4b66/pre_commit/commands/run.py#L74-L75)
 
 ```python
 class Classifier:
@@ -376,13 +376,13 @@ pre-commit run -a               # removed at Stage 2, hooks never see it
 
 This is the last stage that runs once. `self.filenames` is now the shared list every hook starts from.
 
----
+______________________________________________________________________
 
 ## 7. Stage 3: Hook-Level `files:` / `exclude:`
 
 Now pre-commit loops over hooks. For each one it calls `filenames_for_hook()`:
 
-Source: [`commands/run.py#L100-L110`](https://github.com/pre-commit/pre-commit/blob/v4.6.2/pre_commit/commands/run.py#L100-L110)
+Source: [`commands/run.py#L100-L110`](https://github.com/pre-commit/pre-commit/blob/9767b6c8211a6bf683875a0afcf2b390457a4b66/pre_commit/commands/run.py#L100-L110)
 
 ```python
 class Classifier:
@@ -416,15 +416,15 @@ repos:
 Hook-level `files` and `exclude` can come from two places:
 
 - The hook's definition in the hook repository's `.pre-commit-hooks.yaml`.
-- Your override in `.pre-commit-config.yaml`, which **replaces** the repository's value for that key. Keys are merged one by one with `dict.update` ([`repository.py#L109-L115`](https://github.com/pre-commit/pre-commit/blob/v4.6.2/pre_commit/repository.py#L109-L115)), so a key you do not set keeps the repository's value.
+- Your override in `.pre-commit-config.yaml`, which **replaces** the repository's value for that key. Keys are merged one by one with `dict.update` ([`repository.py#L109-L115`](https://github.com/pre-commit/pre-commit/blob/9767b6c8211a6bf683875a0afcf2b390457a4b66/pre_commit/repository.py#L109-L115)), so a key you do not set keeps the repository's value.
 
----
+______________________________________________________________________
 
 ## 8. Stage 4: `types`, `types_or`, `exclude_types`
 
 The final filter matches files by **type tags**, which come from the [`identify`](https://github.com/pre-commit/identify) library.
 
-Source: [`commands/run.py#L77-L98`](https://github.com/pre-commit/pre-commit/blob/v4.6.2/pre_commit/commands/run.py#L77-L98)
+Source: [`commands/run.py#L77-L98`](https://github.com/pre-commit/pre-commit/blob/9767b6c8211a6bf683875a0afcf2b390457a4b66/pre_commit/commands/run.py#L77-L98)
 
 ```python
 class Classifier:
@@ -454,13 +454,13 @@ class Classifier:
 
 ### The three conditions
 
-Source: [`clientlib.py#L248-L250`](https://github.com/pre-commit/pre-commit/blob/v4.6.2/pre_commit/clientlib.py#L248-L250)
+Source: [`clientlib.py#L248-L250`](https://github.com/pre-commit/pre-commit/blob/9767b6c8211a6bf683875a0afcf2b390457a4b66/pre_commit/clientlib.py#L248-L250)
 
-| Key | Python check | Meaning | Default |
-|---|---|---|---|
-| `types` | `tags >= types` | File must have **all** of these tags | `[file]` |
-| `types_or` | `tags & types_or` | File must have **at least one** of these tags (skipped if empty) | `[]` |
-| `exclude_types` | `not tags & exclude_types` | File must have **none** of these tags | `[]` |
+| Key             | Python check               | Meaning                                                          | Default  |
+| --------------- | -------------------------- | ---------------------------------------------------------------- | -------- |
+| `types`         | `tags >= types`            | File must have **all** of these tags                             | `[file]` |
+| `types_or`      | `tags & types_or`          | File must have **at least one** of these tags (skipped if empty) | `[]`     |
+| `exclude_types` | `not tags & exclude_types` | File must have **none** of these tags                            | `[]`     |
 
 All three are combined with AND in a single `if`, so like Stage 3 there is no intermediate count inside Stage 4.
 
@@ -505,13 +505,13 @@ hooks:
 
 Since `types` means "all of", `types: [python, yaml]` would match nothing (no file is both). Use `types_or: [python, yaml]` for "either".
 
----
+______________________________________________________________________
 
 ## 9. The Per-Hook Loop
 
 Putting it together, `_run_hooks` builds the shared list once, then runs each hook against it:
 
-Source: [`commands/run.py#L282-L303`](https://github.com/pre-commit/pre-commit/blob/v4.6.2/pre_commit/commands/run.py#L282-L303)
+Source: [`commands/run.py#L282-L303`](https://github.com/pre-commit/pre-commit/blob/9767b6c8211a6bf683875a0afcf2b390457a4b66/pre_commit/commands/run.py#L282-L303)
 
 ```python
 # pre_commit/commands/run.py (simplified)
@@ -535,7 +535,7 @@ Inside `_run_single_hook`, `classifier.filenames_for_hook(hook)` applies Stages 
 - If the final list is empty and the hook does not set `always_run: true`, it shows **(no files to check) Skipped**.
 - Otherwise the hook runs. If `pass_filenames: true` (the default), the filtered list is appended to the command line.
 
-Source: [`commands/run.py#L151-L168`](https://github.com/pre-commit/pre-commit/blob/v4.6.2/pre_commit/commands/run.py#L151-L168), [`clientlib.py#L256`](https://github.com/pre-commit/pre-commit/blob/v4.6.2/pre_commit/clientlib.py#L256), [`clientlib.py#L258`](https://github.com/pre-commit/pre-commit/blob/v4.6.2/pre_commit/clientlib.py#L258)
+Source: [`commands/run.py#L151-L168`](https://github.com/pre-commit/pre-commit/blob/9767b6c8211a6bf683875a0afcf2b390457a4b66/pre_commit/commands/run.py#L151-L168), [`clientlib.py#L256`](https://github.com/pre-commit/pre-commit/blob/9767b6c8211a6bf683875a0afcf2b390457a4b66/pre_commit/clientlib.py#L256), [`clientlib.py#L258`](https://github.com/pre-commit/pre-commit/blob/9767b6c8211a6bf683875a0afcf2b390457a4b66/pre_commit/clientlib.py#L258)
 
 ```bash
 # Skip specific hooks for one run
@@ -552,7 +552,7 @@ SKIP=mypy,ruff pre-commit run
   always_run: true
 ```
 
----
+______________________________________________________________________
 
 ## 10. Worked Example with Real Numbers
 
@@ -641,21 +641,21 @@ A version that takes the filters as flags lives in [`scripts/count_stages.py`](.
 uv run scripts/count_stages.py -a --files '^scheduler/' --exclude /tests/ --types python
 ```
 
----
+______________________________________________________________________
 
 ## 11. `pre-commit run` vs `pre-commit run -a`
 
 Only two things differ. Everything from Stage 1 onward is identical code.
 
-| | `pre-commit run` | `pre-commit run -a` |
-|---|---|---|
-| Stage 0 command | `git diff --staged --name-only --diff-filter=ACMRTUXB` | `git ls-files --deduplicate` |
-| Files included | Staged files only | All tracked files |
-| Deleted files | Removed by `--diff-filter` | Listed, then removed by Stage 2 |
-| Untracked files | Not included | Not included |
-| Unstaged changes stashed | Yes | No |
-| Content hooks see | Staged version | Working tree version |
-| Typical use | Automatic on `git commit` | CI, or after adding/changing hooks |
+|                          | `pre-commit run`                                       | `pre-commit run -a`                |
+| ------------------------ | ------------------------------------------------------ | ---------------------------------- |
+| Stage 0 command          | `git diff --staged --name-only --diff-filter=ACMRTUXB` | `git ls-files --deduplicate`       |
+| Files included           | Staged files only                                      | All tracked files                  |
+| Deleted files            | Removed by `--diff-filter`                             | Listed, then removed by Stage 2    |
+| Untracked files          | Not included                                           | Not included                       |
+| Unstaged changes stashed | Yes                                                    | No                                 |
+| Content hooks see        | Staged version                                         | Working tree version               |
+| Typical use              | Automatic on `git commit`                              | CI, or after adding/changing hooks |
 
 Same config, different starting sizes. Suppose you staged three files: `scheduler/models.py`, `scheduler/admin.py` and `scheduler/tests/test_admin.py`:
 
@@ -674,7 +674,7 @@ If you stage only `README.md`, Stage 4 reaches 0 for `black` and the output show
 black................................................(no files to check)Skipped
 ```
 
----
+______________________________________________________________________
 
 ## 12. Regex Gotchas
 
@@ -734,7 +734,7 @@ files: '*.py'        # actually an invalid regex: nothing to repeat
 files: \.py$
 ```
 
----
+______________________________________________________________________
 
 ## 13. Debugging Your Filters
 
@@ -774,7 +774,7 @@ repos:
       - id: check-useless-excludes  # fails if an exclude matches zero files
 ```
 
-Both hooks are defined with `files: ^\.pre-commit-config\.yaml$` ([`clientlib.py#L376-L398`](https://github.com/pre-commit/pre-commit/blob/v4.6.2/pre_commit/clientlib.py#L376-L398)), so on a normal commit they run only when the config file itself is staged. They then check against every tracked file (`git ls-files`), not the staged list. Run them on demand with `pre-commit run check-hooks-apply -a`.
+Both hooks are defined with `files: ^\.pre-commit-config\.yaml$` ([`clientlib.py#L376-L398`](https://github.com/pre-commit/pre-commit/blob/9767b6c8211a6bf683875a0afcf2b390457a4b66/pre_commit/clientlib.py#L376-L398)), so on a normal commit they run only when the config file itself is staged. They then check against every tracked file (`git ls-files`), not the staged list. Run them on demand with `pre-commit run check-hooks-apply -a`.
 
 ### Test a single file through the pipeline
 
@@ -790,7 +790,7 @@ The file still goes through Stages 1 to 4, so if your filters exclude it, the ho
 python -c "from identify.identify import tags_from_path as t; print(t('scheduler/models.py'))"
 ```
 
----
+______________________________________________________________________
 
 ## 14. Quick Reference
 
@@ -817,11 +817,11 @@ THEN
   otherwise             -> run, filenames appended if pass_filenames
 ```
 
-| Rule | Detail |
-|---|---|
-| Filters only narrow | No stage can restore a file an earlier stage dropped |
+| Rule                       | Detail                                                                                |
+| -------------------------- | ------------------------------------------------------------------------------------- |
+| Filters only narrow        | No stage can restore a file an earlier stage dropped                                  |
 | `files` vs `exclude` order | `files` evaluated first, but it is a logical AND, so order does not affect the result |
-| Regex flavour | Python `re.search`, paths relative to repo root, always `/` separators |
-| Top-level vs hook-level | Top-level affects every hook; hook-level affects only that hook |
-| Hook override | Your `files`/`exclude`/`types` in config replace the hook repo's defaults |
-| `--diff-filter` | Hardcoded Git status filter, unrelated to your config |
+| Regex flavour              | Python `re.search`, paths relative to repo root, always `/` separators                |
+| Top-level vs hook-level    | Top-level affects every hook; hook-level affects only that hook                       |
+| Hook override              | Your `files`/`exclude`/`types` in config replace the hook repo's defaults             |
+| `--diff-filter`            | Hardcoded Git status filter, unrelated to your config                                 |

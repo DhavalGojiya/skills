@@ -1,6 +1,6 @@
 ---
 name: solr
-description: When Apache Solr makes indexed documents searchable and durable: soft vs hard commits, commitWithin, autoCommit, autoSoftCommit, openSearcher, the transaction log, and pysolr's commit flags. Use when a document added to Solr is not showing up in search, shows up earlier or later than expected, when choosing commit settings in solrconfig.xml, when a test that waits for commitWithin is flaky, or when pysolr always_commit, commit, softCommit or commitWithin behave unexpectedly.
+description: When Apache Solr makes indexed documents searchable and durable (soft vs hard commits, commitWithin, autoCommit, autoSoftCommit, openSearcher, the transaction log) and how pysolr's commit flags map onto them. Use when a document added to Solr is not showing up in search, shows up earlier or later than expected, when choosing commit settings in solrconfig.xml, when a test that waits for commitWithin is flaky, or when pysolr always_commit, commit, softCommit or commitWithin behave unexpectedly.
 ---
 
 # Solr commits
@@ -9,15 +9,15 @@ Verified against Solr [9.10.1](https://github.com/apache/solr/tree/releases/solr
 
 ## Rules
 
-1. There is one pending commit per tracker (soft, hard) per core, not per document. Every write proposes a deadline, the earliest wins, and all pending documents become visible together.
-2. A document is findable only after a searcher opens: a soft commit, or a hard commit with `openSearcher=true`. `autoCommit` with `openSearcher=false` makes docs durable but never visible.
-3. Only a hard commit fsyncs segments and truncates the transaction log. Without hard commits the tlog grows and a crash replays all of it before the node serves traffic.
-4. `commitWithin=N` is a **maximum** delay, never a minimum. Any other write with an earlier deadline, any explicit `commit=true`, or a restart makes the doc visible sooner.
-5. `commitWithin` **replaces** `autoSoftCommit maxTime` for that write; it is not capped by it. `commitWithin=20000` waits 20 s even with `autoSoftCommit=3000`.
-6. `commitWithin` is one-shot. The next write without it falls back to `autoSoftCommit maxTime`.
-7. With no `commitWithin` and `autoSoftCommit maxTime=-1`, a doc never becomes visible until something commits explicitly.
-8. By default `commitWithin` drives the soft tracker and never affects `autoCommit` (`<commitWithin><softCommit>true`). On SolrCloud **TLOG replicas** Solr forces it onto the hard tracker and forces `openSearcher=true`.
-9. `openSearcher=false` is ignored on a soft commit.
+01. There is one pending commit per tracker (soft, hard) per core, not per document. Every write proposes a deadline, the earliest wins, and all pending documents become visible together.
+02. A document is findable only after a searcher opens: a soft commit, or a hard commit with `openSearcher=true`. `autoCommit` with `openSearcher=false` makes docs durable but never visible.
+03. Only a hard commit fsyncs segments and truncates the transaction log. Without hard commits the tlog grows and a crash replays all of it before the node serves traffic.
+04. `commitWithin=N` is a **maximum** delay, never a minimum. Any other write with an earlier deadline, any explicit `commit=true`, or a restart makes the doc visible sooner.
+05. `commitWithin` **replaces** `autoSoftCommit maxTime` for that write; it is not capped by it. `commitWithin=20000` waits 20 s even with `autoSoftCommit=3000`.
+06. `commitWithin` is one-shot. The next write without it falls back to `autoSoftCommit maxTime`.
+07. With no `commitWithin` and `autoSoftCommit maxTime=-1`, a doc never becomes visible until something commits explicitly.
+08. By default `commitWithin` drives the soft tracker and never affects `autoCommit` (`<commitWithin><softCommit>true`). On SolrCloud **TLOG replicas** Solr forces it onto the hard tracker and forces `openSearcher=true`.
+09. `openSearcher=false` is ignored on a soft commit.
 10. Commits are demand-driven. An idle core never commits; only adds, updates and **deletes** arm a tracker. Reads never do.
 11. Scheduled commits land 15-35 ms late, never early. A test grace period under ~50 ms will flake.
 12. After a crash, tlog replay ends in a commit: un-hard-committed docs survive and are visible immediately. Pending timers are lost.
@@ -39,12 +39,12 @@ Verified against Solr [9.10.1](https://github.com/apache/solr/tree/releases/solr
 
 ## Choosing settings
 
-| Goal | Setting |
-|---|---|
-| Bounded visibility delay for all writes | `autoSoftCommit maxTime` (for example 1000-5000 ms) |
-| Bounded tlog size and crash replay time | `autoCommit maxTime` with `openSearcher=false` (for example 15000-60000 ms) |
-| One write visible sooner than the default | `commitWithin` on that request |
-| Visible immediately, at a cost | `softCommit=true` on the request; avoid per-document in bulk loads |
+| Goal                                      | Setting                                                                     |
+| ----------------------------------------- | --------------------------------------------------------------------------- |
+| Bounded visibility delay for all writes   | `autoSoftCommit maxTime` (for example 1000-5000 ms)                         |
+| Bounded tlog size and crash replay time   | `autoCommit maxTime` with `openSearcher=false` (for example 15000-60000 ms) |
+| One write visible sooner than the default | `commitWithin` on that request                                              |
+| Visible immediately, at a cost            | `softCommit=true` on the request; avoid per-document in bulk loads          |
 
 ## References
 

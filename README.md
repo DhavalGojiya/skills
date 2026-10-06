@@ -6,10 +6,10 @@ Each skill follows the [Agent Skills](https://agentskills.io) format: a `SKILL.m
 
 ## Skills
 
-| Skill | Use it when | Verified against |
-|---|---|---|
-| [pre-commit](skills/pre-commit/SKILL.md) | A hook skips or checks the wrong files, `files`/`exclude`/`types` filters misbehave, `run` and `run -a` disagree | pre-commit 4.6.2 |
-| [solr](skills/solr/SKILL.md) | A doc added to Solr isn't searchable yet (or appears sooner than expected), choosing `autoCommit`/`autoSoftCommit`/`commitWithin`, flaky commit tests, pysolr `always_commit` surprises | Solr 9.10.1, pysolr 3.11.0 |
+| Skill                                    | Use it when                                                                                                                                                                             | Verified against           |
+| ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------- |
+| [pre-commit](skills/pre-commit/SKILL.md) | A hook skips or checks the wrong files, `files`/`exclude`/`types` filters misbehave, `run` and `run -a` disagree                                                                        | pre-commit 4.6.2           |
+| [solr](skills/solr/SKILL.md)             | A doc added to Solr isn't searchable yet (or appears sooner than expected), choosing `autoCommit`/`autoSoftCommit`/`commitWithin`, flaky commit tests, pysolr `always_commit` surprises | Solr 9.10.1, pysolr 3.11.0 |
 
 ## Install
 
