@@ -16,6 +16,15 @@
       "skills": [
         "./skills/pre-commit"
       ]
+    },
+    {
+      "name": "solr",
+      "description": "When Solr makes documents searchable and durable: soft vs hard commits, commitWithin, autoCommit, and pysolr commit flags",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/solr"
+      ]
     }
   ]
 }
