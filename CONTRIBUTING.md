@@ -66,12 +66,14 @@ Add an entry to `.claude-plugin/marketplace.json`:
 ```json
 {
   "name": "<tool>",
-  "description": "<one line>",
+  "description": "<Tool> internals: <area>, <area>, <area>, and more",
   "source": "./",
   "strict": false,
   "skills": ["./skills/<tool>"]
 }
 ```
+
+Write the plugin `description` as `<Tool> internals: <area>, <area>, <area>, and more`. Name broad areas of the tool that won't go stale (`transactions`, `locking`, `indexes`), not individual topics or error messages, and keep the closing `and more` so the line stays true as the skill grows. The topic-specific text that decides when an agent loads the skill belongs in the `SKILL.md` `description`, which you update whenever you add a topic.
 
 Add a row to the table in `README.md`. If you have the Claude Code CLI, run `claude plugin validate .` before opening a pull request.
 

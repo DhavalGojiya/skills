@@ -10,7 +10,7 @@
   "plugins": [
     {
       "name": "pre-commit",
-      "description": "How pre-commit selects files for each hook, and how to debug files/exclude/types filters",
+      "description": "pre-commit internals: hook execution, file selection, and more",
       "source": "./",
       "strict": false,
       "skills": [
@@ -19,11 +19,29 @@
     },
     {
       "name": "solr",
-      "description": "When Solr makes documents searchable and durable: soft vs hard commits, commitWithin, autoCommit, and pysolr commit flags",
+      "description": "Solr internals: indexing, commits, clients, and more",
       "source": "./",
       "strict": false,
       "skills": [
         "./skills/solr"
+      ]
+    },
+    {
+      "name": "django",
+      "description": "Django internals: the ORM, transactions, migrations, and more",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/django"
+      ]
+    },
+    {
+      "name": "postgres",
+      "description": "PostgreSQL internals: transactions, locking, indexes, and more",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/postgres"
       ]
     }
   ]
