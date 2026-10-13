@@ -43,6 +43,24 @@
       "skills": [
         "./skills/postgres"
       ]
+    },
+    {
+      "name": "linux",
+      "description": "Linux internals: program execution, interpreters, and more",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/linux"
+      ]
+    },
+    {
+      "name": "python-packaging",
+      "description": "Python packaging internals: installers, console scripts, virtual environments, and more",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/python-packaging"
+      ]
     }
   ]
 }
