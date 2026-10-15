@@ -1,16 +1,20 @@
 {
+  "$schema": "https://www.schemastore.org/claude-code-marketplace.json",
   "name": "dhavalgojiya-skills",
+  "description": "Hard-won, source-verified knowledge about developer tools, packaged as agent skills",
   "owner": {
-    "name": "Dhaval Gojiya"
+    "name": "Dhaval Gojiya",
+    "url": "https://github.com/DhavalGojiya"
   },
   "metadata": {
-    "description": "Hard-won, source-verified knowledge about developer tools, packaged as agent skills",
     "version": "0.1.0"
   },
   "plugins": [
     {
       "name": "pre-commit",
       "description": "pre-commit internals: hook execution, file selection, and more",
+      "homepage": "https://github.com/DhavalGojiya/skills/tree/main/skills/pre-commit",
+      "repository": "https://github.com/DhavalGojiya/skills",
       "source": "./",
       "strict": false,
       "skills": [
@@ -20,6 +24,8 @@
     {
       "name": "solr",
       "description": "Solr internals: indexing, commits, clients, and more",
+      "homepage": "https://github.com/DhavalGojiya/skills/tree/main/skills/solr",
+      "repository": "https://github.com/DhavalGojiya/skills",
       "source": "./",
       "strict": false,
       "skills": [
@@ -29,6 +35,8 @@
     {
       "name": "django",
       "description": "Django internals: the ORM, transactions, migrations, and more",
+      "homepage": "https://github.com/DhavalGojiya/skills/tree/main/skills/django",
+      "repository": "https://github.com/DhavalGojiya/skills",
       "source": "./",
       "strict": false,
       "skills": [
@@ -38,6 +46,8 @@
     {
       "name": "postgres",
       "description": "PostgreSQL internals: transactions, locking, indexes, and more",
+      "homepage": "https://github.com/DhavalGojiya/skills/tree/main/skills/postgres",
+      "repository": "https://github.com/DhavalGojiya/skills",
       "source": "./",
       "strict": false,
       "skills": [
@@ -47,6 +57,8 @@
     {
       "name": "linux",
       "description": "Linux internals: program execution, interpreters, and more",
+      "homepage": "https://github.com/DhavalGojiya/skills/tree/main/skills/linux",
+      "repository": "https://github.com/DhavalGojiya/skills",
       "source": "./",
       "strict": false,
       "skills": [
@@ -56,6 +68,8 @@
     {
       "name": "python-packaging",
       "description": "Python packaging internals: installers, console scripts, virtual environments, and more",
+      "homepage": "https://github.com/DhavalGojiya/skills/tree/main/skills/python-packaging",
+      "repository": "https://github.com/DhavalGojiya/skills",
       "source": "./",
       "strict": false,
       "skills": [
@@ -65,6 +79,8 @@
     {
       "name": "mwaa",
       "description": "Amazon MWAA internals: the container filesystem, deployment, dependency installation, startup scripts, and more",
+      "homepage": "https://github.com/DhavalGojiya/skills/tree/main/skills/mwaa",
+      "repository": "https://github.com/DhavalGojiya/skills",
       "source": "./",
       "strict": false,
       "skills": [
