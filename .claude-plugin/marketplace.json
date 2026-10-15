@@ -61,6 +61,15 @@
       "skills": [
         "./skills/python-packaging"
       ]
+    },
+    {
+      "name": "mwaa",
+      "description": "Amazon MWAA internals: the container filesystem, deployment, dependency installation, startup scripts, and more",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/mwaa"
+      ]
     }
   ]
 }
