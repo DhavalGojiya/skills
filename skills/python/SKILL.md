@@ -1,5 +1,5 @@
 ---
-name: python-packaging
+name: python
 description: >-
   How Python installers (uv, pip) turn a package's [project.scripts] entry into the console-script launchers in .venv/bin, and why those launchers break. Use when asking who generates .venv/bin/<tool> (the installer, not the build backend or the package's repository), why its shebang names the venv's python, why a launcher starts with "#!/bin/sh" and "'''exec'", how the uv and pip launcher templates differ, or what sys.exit(main()) does with an entry point's return value; when .venv/bin commands fail after a project directory is moved or renamed ("cannot execute: required file not found", "bad interpreter: No such file or directory", "exec: .../.venv/bin/python: not found") while .venv/bin/python -m still works; or when choosing uv venv --relocatable.
 ---

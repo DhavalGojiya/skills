@@ -1,6 +1,6 @@
 # How Linux Runs a `#!` Script
 
-What happens between typing `./tool` and the interpreter starting: how the kernel reads the `#!` (shebang) line, the limits it applies, and the failures that follow from them. Which error text each caller prints for those failures is in [`exec-errors.md`](exec-errors.md); how Python installers write the launchers in `.venv/bin` is covered by the `python-packaging` skill.
+What happens between typing `./tool` and the interpreter starting: how the kernel reads the `#!` (shebang) line, the limits it applies, and the failures that follow from them. Which error text each caller prints for those failures is in [`exec-errors.md`](exec-errors.md); how Python installers write the launchers in `.venv/bin` is covered by the `python` skill.
 
 Verified against Linux [7.0](https://github.com/torvalds/linux/tree/v7.0) source (`fs/binfmt_script.c`, `fs/exec.c`, `include/uapi/linux/binfmts.h`), coreutils [v9.4](https://github.com/coreutils/coreutils/tree/v9.4) (`src/env.c`) and glibc [2.39](https://github.com/bminor/glibc/tree/glibc-2.39) (`posix/execvpe.c`), and by experiment on Linux 7.0.0 (Ubuntu 24.04) with bash 5.2.21, dash 0.5.12, GNU coreutils 9.4, glibc 2.39, Python 3.12.3 and 3.15.0. Every "Source:" link points at the commit the tag names, with line numbers, so it shows exactly the code quoted here.
 
@@ -461,7 +461,7 @@ At 256 bytes the cut turns `-I` into `-`, which tells Python to read its program
 
 The buffer was 128 bytes before Linux 5.1 (commit `6eb3c3d0a52d`), so older kernels allow only 125 bytes of path. Before Linux 5.0 (commit `b5372fe5dc84`) a too-long path was silently truncated instead of refused. execve(2) gives the limit as 255 characters after `#!`, with the excess ignored; that is two bytes too many, because the `#!` counts within the 256-byte buffer, and since Linux 5.0 an unterminated path is refused rather than ignored.
 
-A deep project directory is the usual way to hit this. bash and dash do not report the `ENOEXEC`: they run the file as a shell script instead (section 9), so a Python launcher with a 300-byte shebang prints shell errors. uv and pip avoid the limit for the launchers they write by switching to a `#!/bin/sh` wrapper once the line, counting `#!` and the newline, passes 127 bytes (see the `python-packaging` skill).
+A deep project directory is the usual way to hit this. bash and dash do not report the `ENOEXEC`: they run the file as a shell script instead (section 9), so a Python launcher with a 300-byte shebang prints shell errors. uv and pip avoid the limit for the launchers they write by switching to a `#!/bin/sh` wrapper once the line, counting `#!` and the newline, passes 127 bytes (see the `python` skill).
 
 ______________________________________________________________________
 
@@ -546,7 +546,7 @@ bash: line 1: ./proj/tool: cannot execute: required file not found
 exit=127
 ```
 
-Use an absolute path, or `#!/usr/bin/env NAME` when you want a `PATH` lookup. uv's relocatable venvs solve the "next to the script" case with a `/bin/sh` wrapper instead (see the `python-packaging` skill).
+Use an absolute path, or `#!/usr/bin/env NAME` when you want a `PATH` lookup. uv's relocatable venvs solve the "next to the script" case with a `/bin/sh` wrapper instead (see the `python` skill).
 
 ______________________________________________________________________
 

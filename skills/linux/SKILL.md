@@ -65,4 +65,4 @@ Run it from this skill's directory. Flags go before the script: `--cwd DIR` (the
 
 - `references/shebang.md`: the kernel's parsing with quoted source and an argv diagram, the single-argument rule, `/usr/bin/env` and `-S` splitting, the 255-byte limit and silent truncation, CRLF, relative paths, chains and `ELOOP`, the `ENOEXEC` shell fallback, permissions. Read it to write a shebang or to explain why one fails.
 - `references/exec-errors.md`: a table of every failure against bash, dash, `env`, Python and git with exact messages and exit statuses, the bash 5.2 message change with its source, and a flowchart from message to cause. Read it when an error message does not make sense.
-- For how uv and pip write the launchers in `.venv/bin` (templates, the `#!/bin/sh` header, moved projects, relocatable venvs), use the `python-packaging` skill.
+- For how uv and pip write the launchers in `.venv/bin` (templates, the `#!/bin/sh` header, moved projects, relocatable venvs), use the `python` skill.

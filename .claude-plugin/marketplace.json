@@ -66,14 +66,14 @@
       ]
     },
     {
-      "name": "python-packaging",
-      "description": "Python packaging internals: installers, console scripts, virtual environments, and more",
-      "homepage": "https://github.com/DhavalGojiya/skills/tree/main/skills/python-packaging",
+      "name": "python",
+      "description": "Python internals: packaging, console scripts, virtual environments, and more",
+      "homepage": "https://github.com/DhavalGojiya/skills/tree/main/skills/python",
       "repository": "https://github.com/DhavalGojiya/skills",
       "source": "./",
       "strict": false,
       "skills": [
-        "./skills/python-packaging"
+        "./skills/python"
       ]
     },
     {
