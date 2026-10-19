@@ -86,6 +86,17 @@
       "skills": [
         "./skills/mwaa"
       ]
+    },
+    {
+      "name": "django-haystack",
+      "description": "django-haystack internals: search results, drf-haystack serializers, indexes, and more",
+      "homepage": "https://github.com/DhavalGojiya/skills/tree/main/skills/django-haystack",
+      "repository": "https://github.com/DhavalGojiya/skills",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/django-haystack"
+      ]
     }
   ]
 }
