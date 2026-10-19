@@ -16,6 +16,8 @@ Each skill follows the [Agent Skills](https://agentskills.io) format: a `SKILL.m
 | [python](skills/python/SKILL.md)                   | Who writes `.venv/bin` launchers and why their shebang names the venv's `python`, launchers starting with `#!/bin/sh` and `'''exec'`, `.venv/bin` commands broken after moving a project, relocatable venvs                                                                                                                    | uv 0.13.0, pip 26.2.1                                            |
 | [mwaa](skills/mwaa/SKILL.md)                       | Where files uploaded to an MWAA bucket land in the container (`/usr/local/airflow/...`), a `plugins.zip`, `requirements.txt` or `startup.sh` change with no effect, `ModuleNotFoundError` after a deploy, `Could not open constraint file`, custom constraints, a startup script that kills the container or loses its exports | amazon-mwaa-docker-images 3.0.6 image, Airflow 3.0.6, pip 26.2.1 |
 | [django-haystack](skills/django-haystack/SKILL.md) | A drf-haystack response drops a `Meta.fields` entry or shows `null`, stale values or `_exact` keys, a search endpoint runs one SQL query per result, `Got AttributeError when attempting to get a value for field`, choosing which model fields to put in a `SearchIndex`                                                      | drf-haystack 1.9.3, django-haystack 3.4.0, DRF 3.18.1            |
+| [vue](skills/vue/SKILL.md)                         | What a `.vue` file compiles to (`_sfc_main`, `__name`, `__returned__`), whether same-named variables in two components clash, `_sfc_main$2` or `a$1` in a bundle, state shared through a plain `<script>`, `<KeepAlive include>` not matching, changing `data-v` ids or absolute `__file` paths in a build                     | Vue 3.5.44, @vitejs/plugin-vue 6.0.10, Vite 8.3.4 and 7.3.7      |
+| [vite](skills/vite/SKILL.md)                       | Which of `.env`, `.env.local`, `.env.[mode]` and `.env.[mode].local` wins for `vite` or `vite build`, an `import.meta.env` value that is `undefined`, cut at `#` or missing a `$` part, `--mode` builds with `PROD` true, `NODE_ENV` in a `.env` file ignored, `.env` changes with no effect                                   | Vite 8.3.4 and 7.3.7, Node 20.19 to 24                           |
 
 ## Install
 
@@ -31,6 +33,8 @@ Each skill follows the [Agent Skills](https://agentskills.io) format: a `SKILL.m
 /plugin install python@dhavalgojiya-skills
 /plugin install mwaa@dhavalgojiya-skills
 /plugin install django-haystack@dhavalgojiya-skills
+/plugin install vue@dhavalgojiya-skills
+/plugin install vite@dhavalgojiya-skills
 ```
 
 Or from a shell:
@@ -45,6 +49,8 @@ claude plugin install linux@dhavalgojiya-skills
 claude plugin install python@dhavalgojiya-skills
 claude plugin install mwaa@dhavalgojiya-skills
 claude plugin install django-haystack@dhavalgojiya-skills
+claude plugin install vue@dhavalgojiya-skills
+claude plugin install vite@dhavalgojiya-skills
 ```
 
 Each skill is its own plugin, so install only the ones you need.

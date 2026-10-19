@@ -97,6 +97,28 @@
       "skills": [
         "./skills/django-haystack"
       ]
+    },
+    {
+      "name": "vue",
+      "description": "Vue internals: single-file component compilation, component names, and more",
+      "homepage": "https://github.com/DhavalGojiya/skills/tree/main/skills/vue",
+      "repository": "https://github.com/DhavalGojiya/skills",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/vue"
+      ]
+    },
+    {
+      "name": "vite",
+      "description": "Vite internals: modes, env files, and more",
+      "homepage": "https://github.com/DhavalGojiya/skills/tree/main/skills/vite",
+      "repository": "https://github.com/DhavalGojiya/skills",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/vite"
+      ]
     }
   ]
 }
