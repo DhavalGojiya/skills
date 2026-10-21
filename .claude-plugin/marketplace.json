@@ -100,7 +100,7 @@
     },
     {
       "name": "vue",
-      "description": "Vue internals: single-file component compilation, component names, and more",
+      "description": "Vue internals: single-file component compilation, component names, reactivity, rendering and SSR, and more",
       "homepage": "https://github.com/DhavalGojiya/skills/tree/main/skills/vue",
       "repository": "https://github.com/DhavalGojiya/skills",
       "source": "./",

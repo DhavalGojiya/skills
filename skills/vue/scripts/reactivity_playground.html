@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vue Reactivity Playground</title>
+<style>
+  :root {
+    --bg: #f7f7f8; --panel: #ffffff; --text: #1d1d20; --muted: #63636b;
+    --border: #dcdce0; --accent: #2457d6; --code-bg: #f0f1f4; --ok: #1d7a46;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #141416; --panel: #1d1d21; --text: #ececf0; --muted: #a0a0aa;
+      --border: #34343b; --accent: #7aa2ff; --code-bg: #26262c; --ok: #5fd08f;
+      color-scheme: dark;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px 16px 48px; background: var(--bg); color: var(--text);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  main { max-width: 960px; margin: 0 auto; display: grid; gap: 20px; }
+  h1 { margin: 0; font-size: 22px; }
+  h2 { margin: 0 0 4px; font-size: 17px; }
+  p { margin: 4px 0 12px; color: var(--muted); }
+  section { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+  button {
+    font: inherit; padding: 6px 12px; border-radius: 6px; cursor: pointer;
+    border: 1px solid var(--border); background: var(--code-bg); color: var(--text);
+  }
+  button:hover { border-color: var(--accent); }
+  pre, code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 13px; }
+  pre {
+    margin: 0; padding: 10px; background: var(--code-bg); border-radius: 6px;
+    white-space: pre-wrap; word-break: break-word; min-height: 2.6em;
+  }
+  .label { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 10px 0 4px; }
+  .demo { border: 1px dashed var(--border); border-radius: 6px; padding: 10px; }
+  .demo nav { display: flex; gap: 12px; align-items: center; }
+  .demo a { color: var(--accent); }
+  .counts { display: flex; gap: 16px; flex-wrap: wrap; }
+  .counts b { color: var(--ok); }
+  .card { border: 1px solid var(--border); border-radius: 6px; padding: 10px; }
+</style>
+
+<script>
+  // Records the DOM calls Vue makes while `domLog.recording` is true. Installed
+  // before Vue loads; Vue's own nodeOps call these same prototype methods.
+  window.domLog = { recording: false, entries: [] }
+  const show = n => n == null ? 'null' : n.nodeType === 8 ? `<!--${n.data}-->` : n.nodeType === 3 ? JSON.stringify(n.data) : n.outerHTML
+  for (const name of ['insertBefore', 'removeChild', 'appendChild']) {
+    const original = Node.prototype[name]
+    Node.prototype[name] = function (...args) {
+      if (domLog.recording) domLog.entries.push(`${name}(${args.map(show).join(', ')})`)
+      return original.apply(this, args)
+    }
+  }
+  for (const [proto, prop] of [[Node.prototype, 'textContent'], [Node.prototype, 'nodeValue'], [Element.prototype, 'innerHTML'], [Element.prototype, 'className']]) {
+    const desc = Object.getOwnPropertyDescriptor(proto, prop)
+    Object.defineProperty(proto, prop, {
+      get: desc.get,
+      set(v) { if (domLog.recording) domLog.entries.push(`${prop} = ${JSON.stringify(v)}`); desc.set.call(this, v) },
+      configurable: true,
+    })
+  }
+  const styleDesc = Object.getOwnPropertyDescriptor(CSSStyleDeclaration.prototype, 'display')
+  if (styleDesc) {
+    Object.defineProperty(CSSStyleDeclaration.prototype, 'display', {
+      get: styleDesc.get,
+      set(v) { if (domLog.recording) domLog.entries.push(`style.display = ${JSON.stringify(v)}`); styleDesc.set.call(this, v) },
+      configurable: true,
+    })
+  }
+</script>
+<script src="https://unpkg.com/vue@3.5.44/dist/vue.global.js"></script>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+  const { createApp, ref, nextTick, onMounted } = Vue
+
+  // Module-level refs: one object shared by every component that reads them.
+  const isAdmin = ref(false)
+  const userName = ref('Asha')
+  const sharedAdmin = ref(false)
+  const renders = { Navbar: 0, UserMenu: 0, Footer: 0 }
+
+  const UserMenu = {
+    props: ['name'],
+    updated() { renders.UserMenu++ },
+    template: `<span class="user">👤 {{ name }}</span>`,
+  }
+  const Navbar = {
+    components: { UserMenu },
+    setup: () => ({ isAdmin, userName }),
+    updated() { renders.Navbar++ },
+    template: `<nav><a href="#">Home</a><a href="#">About</a><a v-if="isAdmin" href="#">Admin</a><UserMenu :name="userName" /></nav>`,
+  }
+  const Footer = {
+    updated() { renders.Footer++ },
+    template: `<footer>Footer (never reads isAdmin)</footer>`,
+  }
+
+  // Same variable name in every instance, a new ref per setup() call.
+  const AdminCard = {
+    props: ['title'],
+    setup() {
+      const isAdmin = ref(false)
+      return { isAdmin, sharedAdmin }
+    },
+    template: `
+      <div class="card">
+        <strong>{{ title }}</strong>
+        <div>own isAdmin: <code>{{ isAdmin }}</code></div>
+        <div>sharedAdmin: <code>{{ sharedAdmin }}</code></div>
+        <div class="row"><button @click="isAdmin = !isAdmin">toggle own</button></div>
+      </div>`,
+  }
+
+  const TeamPanel = {
+    setup() {
+      const team = ref(null)
+      const load = () => {
+        team.value = null
+        setTimeout(() => { team.value = ['Asha', 'Ben', 'Chen'] }, 800)
+      }
+      onMounted(load)
+      return { team, load }
+    },
+    template: `
+      <div>
+        <ul v-if="team"><li v-for="m in team" :key="m">{{ m }}</li></ul>
+        <p v-else>Loading team…</p>
+        <button @click="load">fetch again</button>
+      </div>`,
+  }
+
+  createApp({
+    components: { Navbar, Footer, AdminCard, TeamPanel },
+    setup() {
+      const navHtml = ref('')
+      const log = ref([])
+      const counts = ref({ ...renders })
+      const visible = ref(true)
+      const toggleHtml = ref('')
+
+      const snapshot = () => {
+        navHtml.value = document.querySelector('#nav-demo').innerHTML
+        toggleHtml.value = document.querySelector('#toggle-demo').innerHTML
+      }
+      // Runs one change with DOM recording on, waits for Vue's batched re-render,
+      // then copies the results into refs. Recording stops first so the log
+      // panel's own update is not recorded.
+      const run = async fn => {
+        domLog.entries = []
+        domLog.recording = true
+        fn()
+        await nextTick()
+        domLog.recording = false
+        log.value = domLog.entries.length ? [...domLog.entries] : ['(no DOM calls: nothing re-rendered)']
+        counts.value = { ...renders }
+        snapshot()
+      }
+      onMounted(snapshot)
+
+      return {
+        sharedAdmin, navHtml, log, counts, visible, toggleHtml,
+        toggleAdmin: () => run(() => { isAdmin.value = !isAdmin.value }),
+        sameValue: () => run(() => { isAdmin.value = isAdmin.value }),
+        threeTimes: () => run(() => { isAdmin.value = !isAdmin.value; isAdmin.value = !isAdmin.value; isAdmin.value = !isAdmin.value }),
+        rename: () => run(() => { userName.value = userName.value === 'Asha' ? 'Ben' : 'Asha' }),
+        toggleVisible: () => run(() => { visible.value = !visible.value }),
+      }
+    },
+    template: `
+      <main>
+        <header>
+          <h1>Vue reactivity playground</h1>
+          <p>Vue 3.5.44. Every button changes one ref, then shows the DOM calls Vue made and which components re-rendered.</p>
+        </header>
+
+        <section>
+          <h2>1. v-if, re-render scope and the DOM calls Vue makes</h2>
+          <p>Navbar reads <code>isAdmin</code> and <code>userName</code>. UserMenu gets <code>userName</code> as a prop. Footer reads neither.</p>
+          <div class="row">
+            <button @click="toggleAdmin">toggle isAdmin</button>
+            <button @click="sameValue">set isAdmin to the same value</button>
+            <button @click="threeTimes">toggle isAdmin 3 times in one tick</button>
+            <button @click="rename">switch userName</button>
+          </div>
+          <div class="demo" id="nav-demo"><Navbar /><Footer /></div>
+          <div class="label">Live HTML (look for the v-if comment)</div>
+          <pre>{{ navHtml }}</pre>
+          <div class="label">DOM calls from the last click</div>
+          <pre>{{ log.join('\\n') }}</pre>
+          <div class="label">Re-renders so far</div>
+          <div class="counts">
+            <span>Navbar <b>{{ counts.Navbar }}</b></span>
+            <span>UserMenu <b>{{ counts.UserMenu }}</b></span>
+            <span>Footer <b>{{ counts.Footer }}</b></span>
+          </div>
+        </section>
+
+        <section>
+          <h2>2. v-if versus v-show</h2>
+          <p>v-if removes the element and leaves a comment; v-show keeps it and sets <code>style.display</code>.</p>
+          <div class="row"><button @click="toggleVisible">toggle visible</button></div>
+          <div class="demo" id="toggle-demo"><b v-if="visible">v-if box</b> <b v-show="visible">v-show box</b></div>
+          <div class="label">Live HTML</div>
+          <pre>{{ toggleHtml }}</pre>
+        </section>
+
+        <section>
+          <h2>3. Same variable name, separate state</h2>
+          <p>Each card declares <code>const isAdmin = ref(false)</code> in setup(), so each has its own. <code>sharedAdmin</code> is one module-level ref read by all three.</p>
+          <div class="row"><button @click="sharedAdmin = !sharedAdmin">toggle sharedAdmin</button></div>
+          <div class="grid">
+            <AdminCard title="Card A" /><AdminCard title="Card B" /><AdminCard title="Card C" />
+          </div>
+        </section>
+
+        <section>
+          <h2>4. Placeholder first, data later</h2>
+          <p>The team ref starts as null, so the first render shows the v-else branch. Setting it re-renders the v-if branch.</p>
+          <div class="demo"><TeamPanel /></div>
+        </section>
+      </main>`,
+  }).mount('#app')
+</script>
+</body>
+</html>
