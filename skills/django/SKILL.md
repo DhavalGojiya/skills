@@ -1,11 +1,11 @@
 ---
 name: django
-description: Django on PostgreSQL, covering transactions (autocommit, atomic() and savepoints, select_for_update, on_commit, ATOMIC_REQUESTS, isolation levels), migrations (how migrate wraps each file, the lock and table rewrite each operation causes, CONCURRENTLY index migrations, invalid indexes, the lost django_migrations row) and bulk operations (bulk_create upserts, bulk_update, update(), get_or_create races, delete()). Use when deciding where atomic() goes, on TransactionManagementError, "current transaction is aborted", "could not serialize access", "canceling statement due to lock timeout" during migrate, "CREATE INDEX CONCURRENTLY cannot run inside a transaction block", "there is no unique or exclusion constraint matching the ON CONFLICT specification", "ON CONFLICT DO UPDATE command cannot affect row a second time", when a migration stalls the site or prints OK on every run without being applied, when concurrent updates overwrite each other, or when a background job runs before its rows are committed.
+description: Django on PostgreSQL: transactions (autocommit, atomic() and savepoints, select_for_update, on_commit, ATOMIC_REQUESTS, isolation levels), migrations (how migrate wraps each file, locks and table rewrites, CONCURRENTLY indexes, the lost django_migrations row), bulk operations (bulk_create upserts, bulk_update, update(), get_or_create races, delete()) and connections across fork(). Use when deciding where atomic() goes, on TransactionManagementError, "current transaction is aborted", "could not serialize access", "canceling statement due to lock timeout" during migrate, "CREATE INDEX CONCURRENTLY cannot run inside a transaction block", "there is no unique or exclusion constraint matching the ON CONFLICT specification", "ON CONFLICT DO UPDATE command cannot affect row a second time", "server closed the connection unexpectedly" after a fork, when a migration stalls the site or never stays applied, concurrent updates overwrite each other, forked processes swap query results, or a job runs before its rows commit.
 ---
 
-# Django on PostgreSQL: transactions, migrations and bulk operations
+# Django on PostgreSQL: transactions, migrations, bulk operations and forked connections
 
-Verified against Django [6.1.2](https://github.com/django/django/tree/6.1.2) source and identical on 5.2.17. Transaction and migration-transaction rules were reproduced on psycopg2 2.9.13 and psycopg 3.3.6 against PostgreSQL 16.15 and 18.6; the schema-change, bulk-operation and isolation-level rules on PostgreSQL 18.6 with Django 6.1.2 and psycopg 3.3.6. The SQL was read from PostgreSQL's statement log. Line-level source links, logged SQL and diagrams are in `references/`.
+Verified against Django [6.1.2](https://github.com/django/django/tree/6.1.2) source and identical on 5.2.17. Transaction and migration-transaction rules were reproduced on psycopg2 2.9.13 and psycopg 3.3.6 against PostgreSQL 16.15 and 18.6; the schema-change, bulk-operation and isolation-level rules on PostgreSQL 18.6 with Django 6.1.2 and psycopg 3.3.6. The SQL was read from PostgreSQL's statement log. The fork rules were reproduced with `scripts/check_fork_connections.py` on psycopg2 2.9.13 and psycopg 3.3.6 against PostgreSQL 16, on Django 6.1.2 and 5.2.17. Line-level source links, logged SQL and diagrams are in `references/`.
 
 ## Transaction rules
 
@@ -59,6 +59,15 @@ Verified against Django [6.1.2](https://github.com/django/django/tree/6.1.2) sou
 39. Use `get_or_create()` only when the lookup fields have a unique constraint. Without one, two concurrent callers both insert, and later calls raise `MultipleObjectsReturned`. With one, the loser gets `created=False` and no exception, but inside `atomic()` it waits for the winner's whole transaction.
 40. `QuerySet.delete()` runs its collecting `SELECT`s before `BEGIN`. When the child model has delete signal receivers, Django deletes the children by the ids it collected, so a child row inserted in between makes `COMMIT` fail with `update or delete on table "orders" violates foreign key constraint ... on table "order_lines"` (without receivers it deletes by parent id, and the new child goes too). Lock the parents with `select_for_update()` in the same `atomic()` first, or, on Django 6.1 and later, declare the child foreign key `on_delete=models.DB_CASCADE`.
 
+## Connections across fork()
+
+41. A child created by `os.fork()` or by `multiprocessing` with the `fork` start method inherits the parent's open connections. Django keeps them in a real thread-local (`thread_critical = True`) and `fork()` copies the forking thread's, so the child's first query runs over the parent's socket in the parent's PostgreSQL session.
+42. Never let parent and child use an inherited connection at the same time. Each reads the replies that arrive next, including the other's, with no error: in every measured run most of 300 answers in each process belonged to the other process.
+43. In the child, drop inherited connections without closing them, before the first query: `for conn in connections.all(initialized_only=True): del connections[conn.alias]`. psycopg2 and psycopg 3 skip closing a connection that another process created, so the parent's session carries on, and the child's next query opens its own.
+44. Never close an inherited connection in the child. Closing sends PostgreSQL a Terminate message over the shared socket and the server ends the session, so the parent's next query fails with `OperationalError: server closed the connection unexpectedly` (psycopg 3 adds `consuming input failed: `). `close_old_connections()` does this whenever the connection is older than `CONN_MAX_AGE`: with the default `0` that is always, with `None` never.
+45. Or close the connections in the parent before forking, with `connections.close_all()`. The child inherits no open socket, and the parent reconnects in a new session on its next query.
+46. Keep in-memory SQLite connections in the child: Django ignores `close()` on them, and dropping one leaves the child with an empty database. Drop file-based SQLite connections like PostgreSQL ones.
+
 ## Debug procedure
 
 ### Transactions
@@ -79,6 +88,20 @@ Verified against Django [6.1.2](https://github.com/django/django/tree/6.1.2) sou
 5. Read the SQL with `python manage.py sqlmigrate <app> <name>`: atomic migrations are wrapped in `BEGIN;` … `COMMIT;`, and `RunPython` shows only `-- THIS OPERATION CANNOT BE WRITTEN AS SQL`, so read its code.
 6. Before a concurrent build on a busy table, list `idle in transaction` sessions in that database (query above). During it, watch `SELECT phase, current_locker_pid, blocks_done, blocks_total FROM pg_stat_progress_create_index;`
 
+### Connections after fork()
+
+1. Log every new connection with a `connection_created` receiver that prints `os.getpid()` and `SELECT pg_backend_pid()` (the snippet is in `references/connections-across-fork.md`, section 7). A child that prints nothing before its first query is using an inherited connection.
+2. Map sessions to processes from outside: `SELECT pid, client_port, backend_start, state FROM pg_stat_activity WHERE datname = current_database();` and `ss -tnp '( dport = :5432 )'`. A socket listed under two pids is shared.
+3. Run `uv run scripts/check_fork_connections.py --postgres <url>` against a disposable database to see each rule on the installed Django and driver.
+
+## Script
+
+`scripts/check_fork_connections.py` opens a connection, forks, and reports for each cleanup (delete, `close_old_connections()` with `CONN_MAX_AGE` `0` and `None`, deleting every initialized connection, `close_all()` before forking, no cleanup) whether the parent's session survives, plus how many answers each process gets wrong when both use the inherited connection at once. It uses psycopg2; add `--with "psycopg[binary]==3.3.6"` to `uv run` for psycopg 3:
+
+```bash
+uv run scripts/check_fork_connections.py --postgres postgresql://postgres:test@127.0.0.1:55432/postgres
+```
+
 ## References
 
 - `references/transactions.md`: autocommit (PEP 249 vs Django), `atomic()`, savepoints, recovering from errors, PostgreSQL's aborted state, `savepoint=False`, `durable`, `on_commit`, `ATOMIC_REQUESTS`, `select_for_update()` and the lost-update race, `AUTOCOMMIT: False`, with logged SQL and diagrams. Read it for anything about transactions in application code.
@@ -87,3 +110,4 @@ Verified against Django [6.1.2](https://github.com/django/django/tree/6.1.2) sou
 - `references/schema-change-locks.md`: the table lock, effect on concurrent `SELECT` and `INSERT`, table rewrite and duration of every common migration operation on a 200k-row table (`AddField` defaults and `db_default`, `AlterField` type and null changes, `ForeignKey` vs `NOT VALID` / `VALIDATE`, `AddIndex` vs `AddIndexConcurrently`, `UniqueConstraint`, `RemoveField`, `RenameField`, `RenameModel`), locks held until commit, the lock queue through Django, and the `SET LOCAL lock_timeout` first operation with its exact failure. Read it before writing a migration for a large or busy table, or when `migrate` hangs or stalls the application.
 - `references/bulk-operations.md`: logged SQL and measured results for `bulk_create()` (batches, returned pks, skipped signals, `ignore_conflicts`, `update_conflicts`, the partial unique index error, duplicate keys in a batch), `bulk_update()` with 10k-row timings, `QuerySet.update()` and `auto_now`, `get_or_create()` races, and `QuerySet.delete()`'s collecting queries with the concurrent-child race. Read it before writing bulk inserts, upserts, mass updates or deletes.
 - `references/lost-migration-row.md`: case study of a helper that left autocommit off. A migration never stayed applied, and a rollback broke halfway. Covers the reproduction, the fix and recovery steps. Read it when a migration keeps re-applying or a rollback fails midway.
+- `references/connections-across-fork.md`: what a forked child inherits, the mixed-up results when both processes query, why deleting is safe and closing ends the parent's session (with the psycopg2 and psycopg 3 source), `CONN_MAX_AGE` and `close_old_connections()`, the two safe patterns, SQLite, and how to see which connection a process uses, with measured output. Read it before writing code that forks after touching the database.
