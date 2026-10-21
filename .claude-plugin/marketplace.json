@@ -119,6 +119,17 @@
       "skills": [
         "./skills/vite"
       ]
+    },
+    {
+      "name": "cloudflare",
+      "description": "Cloudflare internals: DNS zones, nameservers, the proxy, and more",
+      "homepage": "https://github.com/DhavalGojiya/skills/tree/main/skills/cloudflare",
+      "repository": "https://github.com/DhavalGojiya/skills",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/cloudflare"
+      ]
     }
   ]
 }
