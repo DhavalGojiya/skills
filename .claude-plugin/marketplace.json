@@ -89,7 +89,7 @@
     },
     {
       "name": "django-haystack",
-      "description": "django-haystack internals: search results, drf-haystack serializers, indexes, and more",
+      "description": "django-haystack internals: search results, drf-haystack serializers, indexes, update_index, and more",
       "homepage": "https://github.com/DhavalGojiya/skills/tree/main/skills/django-haystack",
       "repository": "https://github.com/DhavalGojiya/skills",
       "source": "./",
