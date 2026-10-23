@@ -23,7 +23,7 @@
     },
     {
       "name": "solr",
-      "description": "Solr internals: indexing, commits, clients, and more",
+      "description": "Solr internals: indexing, segments, schema changes, commits, clients, and more",
       "homepage": "https://github.com/DhavalGojiya/skills/tree/main/skills/solr",
       "repository": "https://github.com/DhavalGojiya/skills",
       "source": "./",
